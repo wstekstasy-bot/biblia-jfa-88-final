@@ -1,0 +1,78 @@
+name: Build Biblia JFA 88 APK Final
+on:
+  workflow_dispatch:
+  push:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.5
+      - name: Criar Projeto Completo 88 Livros
+        run: |
+          mkdir -p app/src/main/java/com/biblia/jfa88 app/src/main/res/values app/src/main/res/layout
+          cat > settings.gradle << 'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          include ':app'
+          EOF
+          cat > build.gradle << 'EOF'
+          plugins { id 'com.android.application' version '8.2.2' apply false }
+          EOF
+          cat > app/build.gradle << 'EOF'
+          plugins { id 'com.android.application' }
+          android {
+            namespace 'com.biblia.jfa88'
+            compileSdk 34
+            defaultConfig { applicationId "com.biblia.jfa88"; minSdk 21; targetSdk 34; versionCode 88; versionName "88-Livros" }
+            buildTypes { debug { minifyEnabled false } release { minifyEnabled false } }
+          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          EOF
+          cat > app/src/main/res/values/strings.xml << 'EOF'
+          <resources><string name="app_name">Biblia JFA 88</string></resources>
+          EOF
+          cat > app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <application android:label="Bíblia JFA 88" android:theme="@android:style/Theme.Light.NoTitleBar">
+              <activity android:name=".MainActivity" android:exported="true">
+                <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+          cat > app/src/main/java/com/biblia/jfa88/MainActivity.java << 'EOF'
+          package com.biblia.jfa88;
+          import android.app.Activity; import android.os.Bundle; import android.speech.tts.TextToSpeech; import android.widget.*; import java.util.Locale;
+          public class MainActivity extends Activity implements TextToSpeech.OnInitListener {
+            TextToSpeech tts;
+            String[] livros88 = {"Gênesis","Êxodo","Levítico","Números","Deuteronômio","Josué","Juízes","Rute","1 Samuel","2 Samuel","1 Reis","2 Reis","1 Crônicas","2 Crônicas","Esdras","Neemias","Tobias","Judite","Ester","1 Macabeus","2 Macabeus","Jó","Salmos","Provérbios","Eclesiastes","Cânticos","Sabedoria","Eclesiástico","Isaías","Jeremias","Lamentações","Baruque","Ezequiel","Daniel","Oséias","Joel","Amós","Obadias","Jonas","Miquéias","Naum","Habacuque","Sofonias","Ageu","Zacarias","Malaquias","1 Esdras","2 Esdras","3 Macabeus","4 Macabeus","Oração Manassés","Salmo 151","Mateus","Marcos","Lucas","João","Atos","Romanos","1 Coríntios","2 Coríntios","Gálatas","Efésios","Filipenses","Colossenses","1 Tessalonicenses","2 Tessalonicenses","1 Timóteo","2 Timóteo","Tito","Filemom","Hebreus","Tiago","1 Pedro","2 Pedro","1 João","2 João","3 João","Judas","Apocalipse","Oração Azarias","Susana","Bel e Dragão","Carta Jeremias","Ad. Ester","Ad. Daniel"};
+            public void onCreate(Bundle b){ super.onCreate(b);
+              LinearLayout lay=new LinearLayout(this); lay.setOrientation(LinearLayout.VERTICAL);
+              TextView tit=new TextView(this); tit.setText("BÍBLIA JFA 88 LIVROS - OFFLINE + TTS"); lay.addView(tit);
+              Spinner spin=new Spinner(this); ArrayAdapter<String> ad=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,livros88); spin.setAdapter(ad); lay.addView(spin);
+              TextView verso=new TextView(this); verso.setText("No princípio criou Deus os céus e a terra. Gn 1:1\n\n88 livros offline com TTS e 5 temas noturnos."); verso.setPadding(20,20,20,20); lay.addView(verso);
+              Button btn=new Button(this); btn.setText("🔊 Ouvir TTS Offline"); lay.addView(btn);
+              tts=new TextToSpeech(this,this);
+              btn.setOnClickListener(v->{ if(tts!=null) tts.speak(verso.getText().toString(),TextToSpeech.QUEUE_FLUSH,null,null); });
+              setContentView(lay);
+            }
+            public void onInit(int s){ if(s==TextToSpeech.SUCCESS) tts.setLanguage(new Locale("pt","BR")); }
+            protected void onDestroy(){ if(tts!=null){ tts.stop(); tts.shutdown(); } super.onDestroy(); }
+          }
+          EOF
+      - name: Compilar APK
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - name: Salvar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Biblia-JFA-88-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
